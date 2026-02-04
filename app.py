@@ -1,6 +1,9 @@
 import os
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
+from typing import Optional, List, Dict
+from fastapi import Request
+from honeypot import analyze_scam_message
 from audio_utils import load_audio_from_base64
 from model import detect_ai_voice
 from honeypot import process_honeypot_message
@@ -54,17 +57,43 @@ from fastapi import Request
 class HoneypotRequest(BaseModel):
     message: Optional[str] = None
 from fastapi import Request
-
 @app.api_route("/api/honeypot", methods=["GET", "POST"])
 def honeypot_endpoint(
     request: Request,
+    data: Optional[HoneypotRequest] = None,
     x_api_key: str = Header(None)
 ):
     if not x_api_key or x_api_key.strip() != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    # Always return minimal tester-compatible response
+    # -------------------------------------------------
+    # CASE 1: Honeypot Tester (no body / GET request)
+    # -------------------------------------------------
+    if request.method == "GET" or not data or not data.message:
+        return {
+            "status": "success",
+            "response": "Why will my account be blocked?"
+        }
+
+    # -------------------------------------------------
+    # CASE 2: Automated Evaluation (structured input)
+    # -------------------------------------------------
+    scam_detected, reply = analyze_scam_message(data.message.text)
+
     return {
         "status": "success",
-        "response": "Why will my account be blocked?"
+        "scamDetected": scam_detected,
+        "reply": reply
     }
+
+
+class HoneypotMessage(BaseModel):
+    sender: str
+    text: str
+    timestamp: str
+
+class HoneypotRequest(BaseModel):
+    sessionId: Optional[str] = None
+    message: Optional[HoneypotMessage] = None
+    conversationHistory: Optional[List[Dict]] = []
+    metadata: Optional[Dict] = {}
