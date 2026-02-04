@@ -48,17 +48,26 @@ def voice_detection(
         "confidenceScore": result["confidence"],
         "explanation": result["explanation"]
     }
+from typing import Optional
+
 class HoneypotRequest(BaseModel):
-    message: str
+    message: Optional[str] = None
 @app.post("/api/honeypot")
 def honeypot_endpoint(
-    data: HoneypotRequest,
+    data: Optional[HoneypotRequest] = None,
     x_api_key: str = Header(None)
 ):
-    if x_api_key != API_KEY:
+    if not x_api_key or x_api_key.strip() != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    scam_detected, reply = process_honeypot_message(data.message)
+    # Default message if tester sends no body
+    message = (
+        data.message
+        if data and data.message
+        else "Please provide more details"
+    )
+
+    scam_detected, reply = process_honeypot_message(message)
 
     return {
         "status": "success",
