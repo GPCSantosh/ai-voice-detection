@@ -60,15 +60,15 @@ def honeypot_endpoint(
     if not x_api_key or x_api_key.strip() != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    # If tester sends no body → minimal response
+    # If tester sends no body
     if not data or not data.message:
         return {
             "status": "success",
             "response": "Can you explain more?"
         }
 
-    # Normal honeypot logic
-    scam_detected, reply = process_honeypot_message(data.message)
+    # Honeypot logic
+    _, reply = process_honeypot_message(data.message)
 
     return {
         "status": "success",
