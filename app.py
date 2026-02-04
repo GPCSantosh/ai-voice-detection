@@ -3,6 +3,10 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from audio_utils import load_audio_from_base64
 from model import detect_ai_voice
+from honeypot import process_honeypot_message
+from dotenv import load_dotenv
+load_dotenv()
+
 
 app = FastAPI(title="AI Voice Detection API")
 
@@ -43,4 +47,21 @@ def voice_detection(
         "classification": result["classification"],
         "confidenceScore": result["confidence"],
         "explanation": result["explanation"]
+    }
+class HoneypotRequest(BaseModel):
+    message: str
+@app.post("/api/honeypot")
+def honeypot_endpoint(
+    data: HoneypotRequest,
+    x_api_key: str = Header(None)
+):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    scam_detected, reply = process_honeypot_message(data.message)
+
+    return {
+        "status": "success",
+        "scamDetected": scam_detected,
+        "reply": reply
     }
